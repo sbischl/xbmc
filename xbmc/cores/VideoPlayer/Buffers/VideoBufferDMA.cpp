@@ -14,6 +14,10 @@
 
 #include <drm/drm_fourcc.h>
 
+#if !defined(DRM_FORMAT_YUV420_10BIT)
+#define DRM_FORMAT_YUV420_10BIT fourcc_code('Y', 'U', '1', '0')
+#endif
+
 extern "C"
 {
 #include <libavutil/imgutils.h>
