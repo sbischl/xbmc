@@ -12,7 +12,7 @@
 #include "utils/BufferObject.h"
 #include "utils/log.h"
 
-#include <drm/drm_fourcc.h>
+#include <drm_fourcc.h>
 
 #if !defined(DRM_FORMAT_YUV420_10BIT)
 #define DRM_FORMAT_YUV420_10BIT fourcc_code('Y', 'U', '1', '0')
