@@ -318,7 +318,7 @@ void CRendererDRMPRIMEGLES::RenderUpdate(
   if (!renderSystem)
     return;
 
-  renderSystem->EnableGUIShader(SM_TEXTURE_YUV2RGB);
+  int layers = 0;
 
   if (buf.texture.GetTextureY() != 0)
   {
@@ -326,6 +326,7 @@ void CRendererDRMPRIMEGLES::RenderUpdate(
     glBindTexture(buf.texture.GetTextureTarget(), buf.texture.GetTextureY());
     CLog::Log(LOGDEBUG, LOGVIDEO, "CRendererDRMPRIMEGLES::{} - Y={}", __FUNCTION__,
               buf.texture.GetTextureY());
+    layers = 1;
   }
 
   if (buf.texture.GetTextureU() != 0)
@@ -334,7 +335,7 @@ void CRendererDRMPRIMEGLES::RenderUpdate(
     glBindTexture(buf.texture.GetTextureTarget(), buf.texture.GetTextureU());
     CLog::Log(LOGDEBUG, LOGVIDEO, "CRendererDRMPRIMEGLES::{} - U={}", __FUNCTION__,
               buf.texture.GetTextureU());
-    renderSystem->GUIShaderSetLayers(2);
+    layers = 2;
   }
 
   if (buf.texture.GetTextureV() != 0)
@@ -343,9 +344,15 @@ void CRendererDRMPRIMEGLES::RenderUpdate(
     glBindTexture(buf.texture.GetTextureTarget(), buf.texture.GetTextureV());
     CLog::Log(LOGDEBUG, LOGVIDEO, "CRendererDRMPRIMEGLES::{} - V={}", __FUNCTION__,
               buf.texture.GetTextureV());
-    renderSystem->GUIShaderSetLayers(3);
+    layers = 3;
   }
 
+  if (layers == 1)
+    renderSystem->EnableGUIShader(SM_TEXTURE_RGBA_OES);
+  else
+    renderSystem->EnableGUIShader(SM_TEXTURE_YUV2RGB);
+
+  renderSystem->GUIShaderSetLayers(layers);
   renderSystem->GUIShaderSetAlpha(shaderAlpha);
 
   CConvertMatrix matrix;
