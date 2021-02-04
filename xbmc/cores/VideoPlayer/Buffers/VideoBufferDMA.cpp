@@ -81,6 +81,7 @@ void CVideoBufferDMA::SetDimensions(int width,
 
   AVDRMFrameDescriptor* descriptor = &m_descriptor;
   descriptor->nb_layers = m_planes;
+  descriptor->nb_objects = 1;
 
   for (int layer = 0; layer < descriptor->nb_layers; layer++)
   {
@@ -102,7 +103,7 @@ void CVideoBufferDMA::SetDimensions(int width,
     for (int plane = 0; plane < layerDesc->nb_planes; plane++)
     {
       AVDRMPlaneDescriptor* planeDesc = &layerDesc->planes[plane];
-      planeDesc->object_index = plane;
+      planeDesc->object_index = 0;
 
       AVDRMObjectDescriptor* objectDesc = &descriptor->objects[planeDesc->object_index];
 
