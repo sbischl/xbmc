@@ -32,7 +32,6 @@
 #include "../VideoPlayer/DVDCodecs/Video/DVDVideoCodec.h"
 
 using namespace KODI::MESSAGING;
-using namespace std::chrono_literals;
 
 void CRenderManager::CClockSync::Reset()
 {
@@ -105,10 +104,7 @@ bool CRenderManager::Configure(const VideoPicture& picture, float fps, unsigned 
     }
   }
 
-  CLog::Log(LOGDEBUG,
-            "CRenderManager::Configure - change configuration. {}x{}. display: {}x{}. framerate: "
-            "{:4.2f}.",
-            picture.iWidth, picture.iHeight, picture.iDisplayWidth, picture.iDisplayHeight, fps);
+  CLog::Log(LOGDEBUG, "CRenderManager::Configure - change configuration. %dx%d. display: %dx%d. framerate: %4.2f.", picture.iWidth, picture.iHeight, picture.iDisplayWidth, picture.iDisplayHeight, fps);
 
   // make sure any queued frame was fully presented
   {
@@ -123,7 +119,7 @@ bool CRenderManager::Configure(const VideoPicture& picture, float fps, unsigned 
         m_forceNext = false;
         return false;
       }
-      m_presentevent.wait(lock, std::chrono::milliseconds(endtime.MillisLeft()));
+      m_presentevent.wait(lock, endtime.MillisLeft());
     }
     m_forceNext = false;
   }
@@ -150,7 +146,7 @@ bool CRenderManager::Configure(const VideoPicture& picture, float fps, unsigned 
     m_presentevent.notifyAll();
   }
 
-  if (!m_stateEvent.Wait(1000ms))
+  if (!m_stateEvent.WaitMSec(1000))
   {
     CLog::Log(LOGWARNING, "CRenderManager::Configure - timeout waiting for configure");
     CSingleLock lock(m_statelock);
@@ -199,8 +195,7 @@ bool CRenderManager::Configure()
     if(m_QueueSize < 2)
     {
       m_QueueSize = 2;
-      CLog::Log(LOGWARNING, "CRenderManager::Configure - queue size too small ({}, {}, {})",
-                m_QueueSize, renderbuffers, m_NumberBuffers);
+      CLog::Log(LOGWARNING, "CRenderManager::Configure - queue size too small (%d, %d, %d)", m_QueueSize, renderbuffers, m_NumberBuffers);
     }
 
     m_pRenderer->SetBufferSize(m_QueueSize);
@@ -232,7 +227,7 @@ bool CRenderManager::Configure()
 
     m_renderState = STATE_CONFIGURED;
 
-    CLog::Log(LOGDEBUG, "CRenderManager::Configure - {}", m_QueueSize);
+    CLog::Log(LOGDEBUG, "CRenderManager::Configure - %d", m_QueueSize);
   }
   else
     m_renderState = STATE_UNCONFIGURED;
@@ -265,7 +260,7 @@ void CRenderManager::FrameWait(int ms)
   XbmcThreads::EndTime timeout(ms);
   CSingleLock lock(m_presentlock);
   while(m_presentstep == PRESENT_IDLE && !timeout.IsTimePast())
-    m_presentevent.wait(lock, std::chrono::milliseconds(timeout.MillisLeft()));
+    m_presentevent.wait(lock, timeout.MillisLeft());
 }
 
 bool CRenderManager::IsPresenting()
@@ -359,9 +354,9 @@ void CRenderManager::PreInit()
   {
     m_initEvent.Reset();
     CApplicationMessenger::GetInstance().PostMsg(TMSG_RENDERER_PREINIT);
-    if (!m_initEvent.Wait(2000ms))
+    if (!m_initEvent.WaitMSec(2000))
     {
-      CLog::Log(LOGERROR, "{} - timed out waiting for renderer to preinit", __FUNCTION__);
+      CLog::Log(LOGERROR, "%s - timed out waiting for renderer to preinit", __FUNCTION__);
     }
   }
 
@@ -388,9 +383,9 @@ void CRenderManager::UnInit()
   {
     m_initEvent.Reset();
     CApplicationMessenger::GetInstance().PostMsg(TMSG_RENDERER_UNINIT);
-    if (!m_initEvent.Wait(2000ms))
+    if (!m_initEvent.WaitMSec(2000))
     {
-      CLog::Log(LOGERROR, "{} - timed out waiting for renderer to uninit", __FUNCTION__);
+      CLog::Log(LOGERROR, "%s - timed out waiting for renderer to uninit", __FUNCTION__);
     }
   }
 
@@ -417,7 +412,7 @@ bool CRenderManager::Flush(bool wait, bool saveBuffers)
 
   if (g_application.IsCurrentThread())
   {
-    CLog::Log(LOGDEBUG, "{} - flushing renderer", __FUNCTION__);
+    CLog::Log(LOGDEBUG, "%s - flushing renderer", __FUNCTION__);
 
     CSingleExit exitlock(CServiceBroker::GetWinSystem()->GetGfxContext());
 
@@ -451,9 +446,9 @@ bool CRenderManager::Flush(bool wait, bool saveBuffers)
     CApplicationMessenger::GetInstance().PostMsg(TMSG_RENDERER_FLUSH);
     if (wait)
     {
-      if (!m_flushEvent.Wait(1000ms))
+      if (!m_flushEvent.WaitMSec(1000))
       {
-        CLog::Log(LOGERROR, "{} - timed out waiting for renderer to flush", __FUNCTION__);
+        CLog::Log(LOGERROR, "%s - timed out waiting for renderer to flush", __FUNCTION__);
         return false;
       }
       else
@@ -472,6 +467,11 @@ void CRenderManager::CreateRenderer()
       buffer = m_pConfigPicture->videoBuffer;
 
     auto renderers = VIDEOPLAYER::CRendererFactory::GetRenderers();
+
+    for (auto &id : renderers) {
+      CLog::Log(LOGINFO, "Detected renderer: {}", id);
+    }
+
     for (auto &id : renderers)
     {
       if (id == "default")
@@ -480,10 +480,12 @@ void CRenderManager::CreateRenderer()
       m_pRenderer = VIDEOPLAYER::CRendererFactory::CreateRenderer(id, buffer);
       if (m_pRenderer)
       {
+        CLog::Log(LOGINFO, "Initialized renderer: {}", id);
         return;
       }
     }
     m_pRenderer = VIDEOPLAYER::CRendererFactory::CreateRenderer("default", buffer);
+    CLog::Log(LOGINFO, "Initialized default renderer");
   }
 }
 
@@ -491,7 +493,7 @@ void CRenderManager::DeleteRenderer()
 {
   if (m_pRenderer)
   {
-    CLog::Log(LOGDEBUG, "{} - deleting renderer", __FUNCTION__);
+    CLog::Log(LOGDEBUG, "%s - deleting renderer", __FUNCTION__);
 
     delete m_pRenderer;
     m_pRenderer = NULL;
@@ -524,7 +526,7 @@ void CRenderManager::StartRenderCapture(unsigned int captureId, unsigned int wid
   it = m_captures.find(captureId);
   if (it == m_captures.end())
   {
-    CLog::Log(LOGERROR, "CRenderManager::Capture - unknown capture id: {}", captureId);
+    CLog::Log(LOGERROR, "CRenderManager::Capture - unknown capture id: %d", captureId);
     return;
   }
 
@@ -568,7 +570,7 @@ bool CRenderManager::RenderCaptureGetPixels(unsigned int captureId, unsigned int
       millis = 1000;
 
     CSingleExit exitlock(m_captCritSect);
-    if (!it->second->GetEvent().Wait(std::chrono::milliseconds(millis)))
+    if (!it->second->GetEvent().WaitMSec(millis))
     {
       m_captureWaitCounter--;
       return false;
@@ -740,12 +742,12 @@ void CRenderManager::Render(bool clear, DWORD flags, DWORD alpha, bool gui)
 
         double refreshrate, clockspeed;
         int missedvblanks;
-        info.vsync = StringUtils::Format("VSyncOff: {:.1f} latency: {:.3f}  ",
-                                         m_clockSync.m_syncOffset / 1000,
-                                         DVD_TIME_TO_MSEC(m_displayLatency) / 1000.0f);
+        info.vsync =
+            StringUtils::Format("VSyncOff: %.1f latency: %.3f  ", m_clockSync.m_syncOffset / 1000,
+                                DVD_TIME_TO_MSEC(m_displayLatency) / 1000.0f);
         if (m_dvdClock.GetClockInfo(missedvblanks, clockspeed, refreshrate))
         {
-          info.vsync += StringUtils::Format("VSync: refresh:{:.3f} missed:{} speed:{:.3f}%",
+          info.vsync += StringUtils::Format("VSync: refresh:%.3f missed:%i speed:%.3f%%",
                                             refreshrate, missedvblanks, clockspeed * 100);
         }
 
@@ -871,8 +873,7 @@ void CRenderManager::UpdateLatencyTweak()
   float refresh = fps;
   if (CServiceBroker::GetWinSystem()->GetGfxContext().GetVideoResolution() == RES_WINDOW)
     refresh = 0; // No idea about refresh rate when windowed, just get the default latency
-  m_latencyTweak = static_cast<double>(
-      CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->GetLatencyTweak(refresh));
+  m_latencyTweak = CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->GetLatencyTweak(refresh);
 }
 
 void CRenderManager::UpdateResolution()
@@ -1000,7 +1001,7 @@ bool CRenderManager::AddVideoPicture(const VideoPicture& picture, volatile std::
     XbmcThreads::EndTime endtime(200);
     while (m_presentstep == PRESENT_READY)
     {
-      m_presentevent.wait(lock, 20ms);
+      m_presentevent.wait(lock, 20);
       if(endtime.IsTimePast() || bStop)
       {
         if (!bStop)
@@ -1065,10 +1066,10 @@ int CRenderManager::WaitForBuffer(volatile std::atomic_bool&bStop, int timeout)
     else
       presenttime = clock + 0.02;
 
-    auto sleeptime = std::chrono::milliseconds(static_cast<int>((presenttime - clock) * 1000));
-    if (sleeptime < 0ms)
-      sleeptime = 0ms;
-    sleeptime = std::min(sleeptime, 20ms);
+    int sleeptime = static_cast<int>((presenttime - clock) * 1000);
+    if (sleeptime < 0)
+      sleeptime = 0;
+    sleeptime = std::min(sleeptime, 20);
     m_presentevent.wait(lock, sleeptime);
     DiscardBuffer();
     return 0;
@@ -1077,7 +1078,7 @@ int CRenderManager::WaitForBuffer(volatile std::atomic_bool&bStop, int timeout)
   XbmcThreads::EndTime endtime(timeout);
   while(m_free.empty())
   {
-    m_presentevent.wait(lock, std::min(50ms, std::chrono::milliseconds(timeout)));
+    m_presentevent.wait(lock, std::min(50, timeout));
     if (endtime.IsTimePast() || bStop)
     {
       return -1;
@@ -1105,15 +1106,9 @@ void CRenderManager::PrepareNextRender()
     return;
 
   double frameOnScreen = m_dvdClock.GetClock();
-  double frametime = 1.0 /
-                     static_cast<double>(CServiceBroker::GetWinSystem()->GetGfxContext().GetFPS()) *
-                     DVD_TIME_BASE;
+  double frametime = 1.0 / CServiceBroker::GetWinSystem()->GetGfxContext().GetFPS() * DVD_TIME_BASE;
 
-  m_displayLatency = DVD_MSEC_TO_TIME(
-      m_latencyTweak +
-      static_cast<double>(CServiceBroker::GetWinSystem()->GetGfxContext().GetDisplayLatency()) -
-      m_videoDelay -
-      static_cast<double>(CServiceBroker::GetWinSystem()->GetFrameLatencyAdjustment()));
+  m_displayLatency = DVD_MSEC_TO_TIME(m_latencyTweak + CServiceBroker::GetWinSystem()->GetGfxContext().GetDisplayLatency() - m_videoDelay - CServiceBroker::GetWinSystem()->GetFrameLatencyAdjustment());
 
   double renderPts = frameOnScreen + m_displayLatency;
 
@@ -1142,11 +1137,7 @@ void CRenderManager::PrepareNextRender()
     m_dvdClock.SetVsyncAdjust(0);
   }
 
-  CLog::LogF(LOGDEBUG, LOGAVTIMING,
-             "frameOnScreen: {:f} renderPts: {:f} nextFramePts: {:f} -> diff: {:f}  render: {} "
-             "forceNext: {}",
-             frameOnScreen, renderPts, nextFramePts, (renderPts - nextFramePts),
-             renderPts >= nextFramePts, m_forceNext);
+  CLog::LogF(LOGDEBUG, LOGAVTIMING, "frameOnScreen: %f renderPts: %f nextFramePts: %f -> diff: %f  render: %u forceNext: %u", frameOnScreen, renderPts, nextFramePts, (renderPts - nextFramePts), renderPts >= nextFramePts, m_forceNext);
 
   bool combined = false;
   if (m_presentsourcePast >= 0)
@@ -1187,8 +1178,7 @@ void CRenderManager::PrepareNextRender()
       m_queued.pop_front();
     }
 
-    int lateframes = static_cast<int>((renderPts - m_Queue[idx].pts) *
-                                      static_cast<double>(m_fps / DVD_TIME_BASE));
+    int lateframes = static_cast<int>((renderPts - m_Queue[idx].pts) * m_fps / DVD_TIME_BASE);
     if (lateframes)
       m_lateframes += lateframes;
     else
@@ -1247,7 +1237,7 @@ void CRenderManager::CheckEnableClockSync()
 
   if (m_fps != 0)
   {
-    double fps = static_cast<double>(m_fps);
+    double fps = m_fps;
     double refreshrate, clockspeed;
     int missedvblanks;
     if (m_dvdClock.GetClockInfo(missedvblanks, clockspeed, refreshrate))
@@ -1255,7 +1245,7 @@ void CRenderManager::CheckEnableClockSync()
       fps *= clockspeed;
     }
 
-    diff = static_cast<double>(CServiceBroker::GetWinSystem()->GetGfxContext().GetFPS()) / fps;
+    diff = CServiceBroker::GetWinSystem()->GetGfxContext().GetFPS() / fps;
     if (diff < 1.0)
       diff = 1.0 / diff;
 
