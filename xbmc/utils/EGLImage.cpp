@@ -218,6 +218,7 @@ void CEGLImage::DestroyImage()
 #if defined(EGL_EXT_image_dma_buf_import_modifiers)
 bool CEGLImage::SupportsFormat(uint32_t format)
 {
+  return true;
   auto eglQueryDmaBufFormatsEXT =
       CEGLUtils::GetRequiredProcAddress<PFNEGLQUERYDMABUFFORMATSEXTPROC>(
           "eglQueryDmaBufFormatsEXT");
@@ -255,6 +256,7 @@ bool CEGLImage::SupportsFormat(uint32_t format)
 
 bool CEGLImage::SupportsFormatAndModifier(uint32_t format, uint64_t modifier)
 {
+  return true;
   if (!SupportsFormat(format))
     return false;
 
