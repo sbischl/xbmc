@@ -45,7 +45,7 @@ bool CWinSystemGbmEGLContext::InitWindowSystemEGL(EGLint renderableType, EGLint 
   {
     return false;
   }
-
+  CLog::Log(LOGINFO, "Initialized EGL");
   return true;
 }
 
