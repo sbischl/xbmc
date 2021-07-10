@@ -467,6 +467,11 @@ void CRenderManager::CreateRenderer()
       buffer = m_pConfigPicture->videoBuffer;
 
     auto renderers = VIDEOPLAYER::CRendererFactory::GetRenderers();
+
+    for (auto &id : renderers) {
+      CLog::Log(LOGINFO, "Detected renderer: {}", id);
+    }
+
     for (auto &id : renderers)
     {
       if (id == "default")
@@ -475,10 +480,12 @@ void CRenderManager::CreateRenderer()
       m_pRenderer = VIDEOPLAYER::CRendererFactory::CreateRenderer(id, buffer);
       if (m_pRenderer)
       {
+        CLog::Log(LOGINFO, "Initialized renderer: {}", id);
         return;
       }
     }
     m_pRenderer = VIDEOPLAYER::CRendererFactory::CreateRenderer("default", buffer);
+    CLog::Log(LOGINFO, "Initialized default renderer");
   }
 }
 
